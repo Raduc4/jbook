@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import bundle from "../bundler";
 import Preview from "../components/preview";
@@ -8,12 +8,20 @@ import Resizable from "./resizable";
 
 const CodeCell: React.FC = () => {
   const [code, setCode] = useState("");
+  const [error, setError] = useState("");
   const [input, setInput] = useState<string>("");
 
-  const onClick = async () => {
-    const output = await bundle(input);
-    setCode(output);
-  };
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const output = await bundle(input);
+      setCode(output.code);
+      setError(output.err);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [input]);
 
   return (
     <Resizable direction="ver">
@@ -24,7 +32,7 @@ const CodeCell: React.FC = () => {
             onChange={(value) => setInput(value)}
           />
         </Resizable>
-        <Preview code={code} />
+        <Preview code={code} err={error} />
       </div>
     </Resizable>
   );
