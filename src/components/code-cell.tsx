@@ -1,34 +1,37 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Cell } from "../state";
-import bundle from "../bundler";
 import Preview from "../components/preview";
 import CodeEditor from "../components/code-editor";
-
+import "./code-cell.css";
 import Resizable from "./resizable";
 
 import { useActions } from "../hooks/use-actions";
+import { useTypedSelector } from "../hooks/use-typped-selector";
+import { useCumulativeCode } from "../hooks/use-cumulative-code";
 
 interface CodeCellProps {
   cell: Cell;
 }
 
 const CodeCell: React.FC<CodeCellProps> = ({ cell }) => {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [input, setInput] = useState<string>("");
-  const { updateCell } = useActions();
+  const { updateCell, createBundle } = useActions();
+  const bundle = useTypedSelector((state) => state.bundles[cell.id]);
+  const cumulativeCode = useCumulativeCode(cell.id);
 
   useEffect(() => {
+    if (!bundle) {
+      createBundle(cell.id, cumulativeCode);
+      return;
+    }
     const timer = setTimeout(async () => {
-      const output = await bundle(cell.content);
-      setCode(output.code);
-      setError(output.err);
-    }, 1000);
+      createBundle(cell.id, cumulativeCode);
+    }, 750);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [cell.content]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cumulativeCode, cell.id, createBundle]);
 
   return (
     <Resizable direction="ver">
@@ -45,7 +48,17 @@ const CodeCell: React.FC<CodeCellProps> = ({ cell }) => {
             onChange={(value) => updateCell(cell.id, value)}
           />
         </Resizable>
-        <Preview code={code} err={error} />
+        <div className="progress-wrapper">
+          {!bundle || bundle.loading ? (
+            <div className="progress-cover">
+              <progress className="progress is-small is-primary" max="100">
+                Loading...
+              </progress>
+            </div>
+          ) : (
+            bundle && <Preview code={bundle.code} err={bundle.err} />
+          )}
+        </div>
       </div>
     </Resizable>
   );
